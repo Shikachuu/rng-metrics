@@ -1,0 +1,57 @@
+name: build service docker image
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY_USER: ${{ github.actor }}
+  REGISTRY_PASSWORD: ${{ github.token }}
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  publish:
+    name: 'Log in to GitHub Container Registry'
+    runs-on: 'ubuntu-latest'
+
+    steps:
+      - name: 'Log in to ghcr.io'
+        uses: 'redhat-actions/podman-login@v1'
+        with:
+          username: '${{ env.REGISTRY_USER }}'
+          password: '${{ env.REGISTRY_PASSWORD }}'
+          registry: '${{ env.IMAGE_REGISTRY }}'
+      - name: 'Checkout action'
+        uses: 'actions/checkout@v3'
+
+      - name: 'Buildah build'
+        id: 'build-image'
+        uses: 'redhat-actions/buildah-build@v2'
+        with:
+          image: '${{ env.IMAGE_REGISTRY }}/rng-metrics'
+          archs: 'amd64, arm64'
+          tags: 'latest ${{ github.sha }}'
+          port: 8080
+          containerfiles: |
+            ./Containerfile
+
+      - name: 'Run Trivy vulnerability scanner'
+        uses: 'aquasecurity/trivy-action@master'
+        with:
+          image-ref: '${{ env.IMAGE_REGISTRY }}/rng-metrics'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: 'Push To ghcr.io'
+        uses: 'redhat-actions/push-to-registry@v2'
+        with:
+          image: '${{ steps.build-image.outputs.image }}'
+          tags: '${{ steps.build-image.outputs.tags }}'
+          registry: '${{ env.IMAGE_REGISTRY }}'
+          username: '${{ env.REGISTRY_USER }}'
+          password: '${{ env.REGISTRY_PASSWORD }}'
