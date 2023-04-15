@@ -23,16 +23,24 @@ jobs:
           username: '${{ env.REGISTRY_USER }}'
           password: '${{ env.REGISTRY_PASSWORD }}'
           registry: '${{ env.IMAGE_REGISTRY }}'
+
       - name: 'Checkout action'
         uses: 'actions/checkout@v3'
+
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
 
       - name: 'Buildah build'
         id: 'build-image'
         uses: 'redhat-actions/buildah-build@v2'
         with:
           image: '${{ env.IMAGE_REGISTRY }}/rng-metrics'
-          archs: 'amd64, arm64'
-          tags: 'latest ${{ github.sha }}'
+          platforms: linux/amd64, linux/arm64
+          tags: |
+            latest
+            ${{ github.sha }}
           port: 8080
           containerfiles: |
             ./Containerfile
