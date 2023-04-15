@@ -37,7 +37,7 @@ jobs:
         uses: 'redhat-actions/buildah-build@v2'
         with:
           image: '${{ env.IMAGE_REGISTRY }}/rng-metrics'
-          platforms: linux/amd64, linux/arm64
+          platforms: linux/amd64 #, linux/arm64
           tags: |
             latest
             ${{ github.sha }}
